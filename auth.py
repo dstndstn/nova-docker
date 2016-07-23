@@ -13,7 +13,7 @@ githubs = {}
 github = Duck()
 github.key = ''
 github.secret = ''
-githubs['broiler'] = github
+githubs['docker'] = github
 
 twitter = Duck()
 twitter.key = ''

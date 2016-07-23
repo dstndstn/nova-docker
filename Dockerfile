@@ -27,25 +27,32 @@ RUN apt-get install -y \
 
 RUN apt-get install -y --no-install-recommends \
     ssl-cert \
-    ca-certificates
+    ca-certificates \
+    libapache2-mod-wsgi \
+    python-psycopg2 \
+    python-pip \
+    python-pil \
+    sqlite3 \
+    python-matplotlib \
+    python-tk
 
+RUN for x in \
+    setuptools \
+    wheel \
+    fitsio \
+    simplejson \
+    ; do pip install $x; done
 
-# RUN mkdir -p /src/cfitsio \
-#     && curl -SL http://heasarc.gsfc.nasa.gov/FTP/software/fitsio/c/cfitsio3390.tar.gz \
-#     | tar -xzC /src/cfitsio \
-#     && cd /src/cfitsio/cfitsio \
-#     && ./configure --prefix=/usr/local \
-#     && make \
-#     && make install
-
-# RUN mkdir -p /src/astrometry \
-#     && curl -SL http://astrometry.net/downloads/astrometry.net-latest.tar.gz \
-#     | tar -xzC /src/astrometry \
-#     && cd /src/astrometry/astrometry.net-* \
-#     && make \
-#     && make py \
-#     && make extra \
-#     && make install INSTALL_DIR=/usr/local
+#     django-openid-auth \
+#     social \
+#     splinter \
+#     networkx \
+#     gmane \
+#     lxml \
+#     requests \
+#     python-dateutil \
+#     parsedatetime \
+#     pytz \
 
 RUN mkdir -p /src \
     && cd /src \
@@ -56,17 +63,8 @@ RUN mkdir -p /src \
     && make extra \
     && make install INSTALL_DIR=/usr/local
 
-RUN apt-get install -y --no-install-recommends \
-    libapache2-mod-wsgi \
-    python-psycopg2 \
-    python-pip
-
-RUN for x in \
-    setuptools \
-    wheel \
-    django-openid-auth \
-    social \
-    ; do pip install $x; done
+###
+#RUN cd /src/astrometry && git pull
 
 COPY apache2.conf /etc/apache2/apache2.conf
 
@@ -76,16 +74,45 @@ RUN cd /etc/apache2/mods-enabled \
     && ln -s ../mods-available/mpm_worker.load . \
     && ln -s ../mods-available/headers.load .
 
-RUN adduser --system --disabled-password --disabled-login nova \
-    && addgroup --system nova \
-    && adduser nova nova
+RUN adduser --disabled-password nova --gecos "Astrometry.net web service,,,"
 
-RUN chown -R nova.nova /src/astrometry \
+RUN cd /src/astrometry/net \
     && mkdir /src/astrometry/net/secrets
 
-COPY django_db.py /src/astrometry/net/secrets/django_db.py
-COPY auth.py      /src/astrometry/net/secrets/auth.py
+COPY django_db.py /src/astrometry/net/secrets/
+COPY auth.py      /src/astrometry/net/secrets/
 COPY __init__.py  /src/astrometry/net/secrets/
+COPY settings.py  /src/astrometry/net/
+COPY docker.cfg   /src/astrometry/net/
+COPY solvescript.sh /src/astrometry/net/
+
+RUN cd /src/astrometry/net \
+    && python manage.py makemigrations \
+    && python manage.py migrate \
+    && python manage.py loaddata fixtures/* \
+    && chmod 755 solvescript.sh
+
+RUN chown -R nova.nova /src/astrometry
+
+RUN apt-get install -y --no-install-recommends \
+    file \
+    ssh
+
+RUN mkdir ~nova/.ssh \
+    && ssh-keygen -f ~nova/.ssh/id_an -N '' \
+    && cp ~nova/.ssh/id_an.pub ~nova/.ssh/authorized_keys
+
+COPY ssh-config ~nova/.ssh/config
+
+RUN chown -R nova.nova ~nova/.ssh
+
+RUN mkdir -p /var/run/sshd \
+    && ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key -N '' \
+    && ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N ''
+
+RUN mkdir -p /INDEXES
+COPY index-4119.fits /INDEXES/
+
 
 #ENTRYPOINT ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
 #CMD apachectl start
