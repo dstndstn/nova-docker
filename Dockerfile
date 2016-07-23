@@ -56,10 +56,39 @@ RUN mkdir -p /src \
     && make extra \
     && make install INSTALL_DIR=/usr/local
 
-RUN apt-get install -y \
-    libapache2-mod-wsgi
+RUN apt-get install -y --no-install-recommends \
+    libapache2-mod-wsgi \
+    python-psycopg2 \
+    python-pip
 
-RUN mkdir -p /etc/apache2
+RUN for x in \
+    setuptools \
+    wheel \
+    django-openid-auth \
+    social \
+    ; do pip install $x; done
+
 COPY apache2.conf /etc/apache2/apache2.conf
 
+RUN cd /etc/apache2/mods-enabled \
+    && rm mpm_event.conf mpm_event.load mime.conf mime.load \
+    && ln -s ../mods-available/mpm_worker.conf . \
+    && ln -s ../mods-available/mpm_worker.load . \
+    && ln -s ../mods-available/headers.load .
+
+RUN adduser --system --disabled-password --disabled-login nova \
+    && addgroup --system nova \
+    && adduser nova nova
+
+RUN chown -R nova.nova /src/astrometry \
+    && mkdir /src/astrometry/net/secrets
+
+COPY django_db.py /src/astrometry/net/secrets/django_db.py
+COPY auth.py      /src/astrometry/net/secrets/auth.py
+COPY __init__.py  /src/astrometry/net/secrets/
+
+#ENTRYPOINT ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
+#CMD apachectl start
+
 EXPOSE 80
+CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
