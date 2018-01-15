@@ -1,5 +1,6 @@
-FROM ubuntu
-RUN apt-get -y update && apt-get install -y --no-install-recommends \
+FROM ubuntu:16.04
+RUN apt-get -y update && apt-get install -y apt-utils
+RUN apt-get install -y --no-install-recommends \
     python-django \
     apache2 \
     curl \
@@ -29,13 +30,24 @@ RUN apt-get -y update && apt-get install -y --no-install-recommends \
     python-matplotlib \
     python-tk \
     file \
-&& rm -rf /var/lib/apt/lists/*
+    apt-utils \
+    libgsl-dev \
+    unhide \
+    wget
 
+# Remove APT files
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Python related stuff
+RUN pip install --upgrade\
+    pip
 RUN for x in \
     setuptools \
     wheel \
     fitsio \
     simplejson \
+    social-auth-core \
+    social-auth-app-django \
     ; do pip install $x; done
 
 RUN mkdir -p /src \
@@ -58,6 +70,8 @@ RUN adduser --disabled-password nova --gecos "Astrometry.net web service,,,"
 RUN mkdir -p /src/astrometry/net/secrets \
     && mkdir -p /INDEXES
 
+COPY start.sh        .
+COPY process_submission.sh .
 COPY django_db.py    /src/astrometry/net/secrets/
 COPY auth.py         /src/astrometry/net/secrets/
 COPY __init__.py     /src/astrometry/net/secrets/
@@ -65,7 +79,12 @@ COPY settings.py     /src/astrometry/net/
 COPY docker.cfg      /src/astrometry/net/
 COPY solvescript.sh  /src/astrometry/net/
 COPY apache2.conf    /etc/apache2/
-COPY index-4119.fits /INDEXES/
+COPY index-4*.fits /INDEXES/
+
+#initialize database if needed
+RUN cd /INDEXES/ \
+  && for i in $(seq 10 19); do wget -nc http://data.astrometry.net/4100/index-41$i.fits; done \
+  && for i in $(seq 7 9); do wget -nc http://data.astrometry.net/4100/index-410$i.fits; done
 
 RUN cd /src/astrometry/net \
     && python manage.py makemigrations \
@@ -75,8 +94,6 @@ RUN cd /src/astrometry/net \
 
 RUN chown -R nova.nova /src/astrometry
 
-#ENTRYPOINT ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
-#CMD apachectl start
-
 EXPOSE 80
-CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
+CMD ["/bin/bash", "./start.sh"]
+#Launch with docker run -d -p 80:80 astrometryserver
