@@ -67,8 +67,7 @@ RUN cd /etc/apache2/mods-enabled \
 
 RUN adduser --disabled-password nova --gecos "Astrometry.net web service,,,"
 
-RUN mkdir -p /src/astrometry/net/secrets \
-    && mkdir -p /INDEXES
+RUN mkdir -p /src/astrometry/net/secrets && mkdir -p /INDEXES
 
 COPY start.sh        .
 COPY process_submission.sh .
@@ -79,12 +78,12 @@ COPY settings.py     /src/astrometry/net/
 COPY docker.cfg      /src/astrometry/net/
 COPY solvescript.sh  /src/astrometry/net/
 COPY apache2.conf    /etc/apache2/
-COPY index-4*.fits /INDEXES/
 
-#initialize database if needed
-RUN cd /INDEXES/ \
-  && for i in $(seq 10 19); do wget -nc http://data.astrometry.net/4100/index-41$i.fits; done \
-  && for i in $(seq 7 9); do wget -nc http://data.astrometry.net/4100/index-410$i.fits; done
+#WARNING : you need to run this in you shell before nuilding image
+#RUN cd /INDEXES/ \
+#  && for i in 4100 4200; do \
+#    wget -r -l1 --no-parent -nc -nd -A ".fits" http://data.astrometry.net/$i/;\
+#    done
 
 RUN cd /src/astrometry/net \
     && python manage.py makemigrations \
@@ -96,4 +95,5 @@ RUN chown -R nova.nova /src/astrometry
 
 EXPOSE 80
 CMD ["/bin/bash", "./start.sh"]
-#Launch with docker run -d -p 80:80 astrometryserver
+#Build with docker build -t astrometryserver .
+#Launch with docker run -d -p 80:80 --mount type=bind,source=$PWD/INDEXES,target=/INDEXES astrometryserver
