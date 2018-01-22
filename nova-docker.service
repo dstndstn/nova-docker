@@ -1,0 +1,16 @@
+#usage:
+#sudo cp ./nova-docker.service /lib/systemd/system
+#sudo systemctl daemon-reload
+#sudo systemctl enable nova-docker.service
+[Unit]
+Description=Nova astrometry.net server
+After=multi-user.target
+[Service]
+Type=idle
+User=gnthibault
+ExecStart=/usr/bin/docker run -d -p 80:80 --mount type=bind,source=/home/gnthibault/projects/nova-docker/INDEXES,target=/INDEXES astrometryserver
+ExecStartPost=/usr/bin/docker run -d -p 80:80 --mount type=bind,source=/home/gnthibault/projects/nova-docker/INDEXES,target=/INDEXES astrometryserver
+Restart=always
+RestartSec=5
+[Install]
+WantedBy=multi-user.target
