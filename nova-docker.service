@@ -9,7 +9,6 @@ After=multi-user.target
 Type=idle
 User=gnthibault
 ExecStart=/usr/bin/docker run -d -p 80:80 --mount type=bind,source=/home/gnthibault/projects/nova-docker/INDEXES,target=/INDEXES astrometryserver
-ExecStartPost=/usr/bin/docker run -d -p 80:80 --mount type=bind,source=/home/gnthibault/projects/nova-docker/INDEXES,target=/INDEXES astrometryserver
 Restart=always
 RestartSec=5
 [Install]
