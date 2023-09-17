@@ -14,15 +14,18 @@ cd /INDEXES/ \
     done
 ```
 This process may take some time, so it's advisable to start early and continue reading the `README` file and the `Dockerfile` in the meantime.
+
 2. Next, build the Docker image using the example command line provided. Modify according to your needs.
 ```
 sudo docker build -t nova-docker .
 ```
+
 3. Once the image is built, launch it using the example command line.
 ```
 sudo docker run -d -p 8000:80 --mount type=bind,source=$PWD/INDEXES,target=/INDEX nova-docker
 ```
 This command will launch a docker instance, start the backend and frontend of the Nova system, listen on port 80. And then it will map the Docker instance's 80 port to the host's 8000 port. If you are deploying in a production environment, you may want to put it as 80 instead of 8000 as well, or use a reverse proxy.
+
 4. Lastly, make necessary changes in the code. To do this, execute the provided command line to enter the Docker image.
 ```
 sudo docker exec -it 3581ccc20fa9 /bin/bash
